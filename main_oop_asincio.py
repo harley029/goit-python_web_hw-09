@@ -167,7 +167,7 @@ class AuthorScraper(Scraper):
 
 
 class QuoteScraper(Scraper):
-    def __init__(self, base_url, db: Database, json_handler: JsonFileHandler):
+    def __init__(self, base_url, db: Database):
         self.base_url = base_url
         self.db = db
         self.json_handler = json_handler
@@ -219,8 +219,9 @@ class ScraperAbstract(ABC):
 
 
 class ScraperManager(ScraperAbstract):
-    def __init__(self, scraper: Scraper):
+    def __init__(self, scraper: Scraper, json_handler: JsonFileHandler):
         self.scraper = scraper
+        self.json_handler = json_handler
 
     async def scrape_and_store(self):
         start_time = time.time()
@@ -259,7 +260,7 @@ if __name__ == "__main__":
 
     db = Database(DB_NAME, DB_HOST)
     json_handler = JsonFileHandler()
-    scraper = QuoteScraper(BASE_URL, db, json_handler)
+    scraper = QuoteScraper(BASE_URL, db)
 
-    scraper_manager = ScraperManager(scraper)
+    scraper_manager = ScraperManager(scraper, json_handler)
     asyncio.run(scraper_manager.scrape_and_store())
