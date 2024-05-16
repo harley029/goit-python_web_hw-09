@@ -1,0 +1,17 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+lxml = "5.2.2"
+requests = "2.31.0"
+beautifulsoup4 = "4.12.3"
+mongoengine = "0.28.2"
+aiohttp = "*"
+motor = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.12"
