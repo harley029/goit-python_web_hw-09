@@ -101,9 +101,8 @@ class Scraper(ABC):
 
 
 class AuthorScraper(Scraper):
-    def __init__(self, base_url, json_handler: JsonFileHandler):
+    def __init__(self, base_url):
         self.base_url = base_url
-        self.json_handler = json_handler
 
     async def get_pages(self, session) -> list:
         logging.info(f"Отримання списку сторінок для парсингу з: {self.base_url}")
@@ -229,8 +228,7 @@ class ScraperManager(ScraperAbstract):
         async with aiohttp.ClientSession() as session:
             # Отримання інформації про авторів з послідуючим парсингом та записом у json файл
             author_scraper = AuthorScraper(
-                self.scraper.base_url, self.scraper.json_handler
-            )
+                self.scraper.base_url)
             pages = await author_scraper.get_pages(session)
             author_links = await author_scraper.get_authors_info(session, pages)
             authors_info = await author_scraper.parse_data(session, author_links)
