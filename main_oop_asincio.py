@@ -1,12 +1,13 @@
 import json
 import logging
 import time
-import aiohttp
+from abc import ABC, abstractmethod
+
 import asyncio
+import aiohttp
 from bs4 import BeautifulSoup
 from mongoengine import connect
 from models import Author, Quote
-from abc import ABC, abstractmethod
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -39,8 +40,10 @@ class Database(DatabaseAbstract):
     async def upload_author_data(self, authors_data: list):
         logging.info("Збереження авторів у базі даних.")
         for author_data in authors_data:
-            author = Author(**author_data)
-            author.save()
+            # Перевірка наявності автора в базі даних
+            if not Author.objects(fullname=author_data["fullname"]).first():
+                author = Author(**author_data)
+                author.save()
         logging.info("Збереження авторів завершено.")
 
     async def upload_quotes_data(self, quotes_data: list):
@@ -50,15 +53,17 @@ class Database(DatabaseAbstract):
             author = Author.objects(fullname=author_name).first()
             if author:
                 quote_data["author"] = author
-                quote = Quote(**quote_data)
-                quote.save()
+                # Перевірка наявності цитати в базі даних
+                if not Quote.objects(quote=quote_data["quote"]).first():
+                    quote = Quote(**quote_data)
+                    quote.save()
         logging.info("Збереження цитат завершено.")
 
 
 class SoupFetcher:
     @staticmethod
     async def get_soup(session, url):
-        logging.info(f"Отримання вмісту сторінки: {url}")
+        logging.info("Отримання вмісту сторінки: %s", url)
         async with session.get(url) as response:
             text = await response.text()
             soup = BeautifulSoup(text, "lxml")
@@ -78,13 +83,13 @@ class JsonFileHandlerAbstract(ABC):
 class JsonFileHandler(JsonFileHandlerAbstract):
     @staticmethod
     async def write_to_json(filename: str, data: list):
-        logging.info(f"Запис даних у файл: {filename}")
+        logging.info("Запис даних у файл: %s", filename)
         with open(filename, "w", encoding="utf-8") as file:
             json.dump(data, file, ensure_ascii=False, indent=4)
 
     @staticmethod
     async def read_from_json(filename: str):
-        logging.info(f"Читання даних з файлу: {filename}")
+        logging.info("Читання даних з файлу: %s", filename)
         with open(filename) as f:
             data = json.load(f)
         return data
@@ -105,7 +110,7 @@ class AuthorScraper(Scraper):
         self.base_url = base_url
 
     async def get_pages(self, session) -> list:
-        logging.info(f"Отримання списку сторінок для парсингу з: {self.base_url}")
+        logging.info("Отримання списку сторінок для парсингу з: %s", self.base_url)
         links = [self.base_url]
         link_to_parse = self.base_url
         while link_to_parse:
@@ -117,7 +122,7 @@ class AuthorScraper(Scraper):
                 link_to_parse = self.base_url + link
             else:
                 link_to_parse = None
-        logging.info(f"Знайдено {len(links)} сторінок для парсингу.")
+        logging.info("Знайдено %d сторінок для парсингу.", len(links))
         return links
 
     async def get_authors_info(self, session, urls: list) -> list:
@@ -127,10 +132,11 @@ class AuthorScraper(Scraper):
             soup = await SoupFetcher.get_soup(session, url)
             authors = soup.find_all("small", class_="author")
             authors_description = soup.find_all("div", class_="quote")
-            for el in range(len(authors)):
-                author_name = authors[el].text
+            for el, author in enumerate(authors):
+                author_name = author.text
                 author_found = any(
-                    author["author_name"] == author_name for author in author_links
+                    author_link["author_name"] == author_name
+                    for author_link in author_links
                 )
                 if not author_found:
                     author_info_url = self.base_url + authors_description[el].find(
@@ -139,7 +145,7 @@ class AuthorScraper(Scraper):
                     author_links.append(
                         {"author_name": author_name, "author_info_url": author_info_url}
                     )
-        logging.info(f"Знайдено {len(author_links)} авторів.")
+        logging.info("Знайдено %d авторів.", len(author_links))
         return author_links
 
     async def parse_data(self, session, author_links: list):
@@ -162,7 +168,7 @@ class AuthorScraper(Scraper):
                     "description": description,
                 }
             )
-        logging.info(f"Парсинг завершено. Знайдено {len(author_list)} авторів.")
+        logging.info("Парсинг завершено. Знайдено %d авторів.", len(author_list))
         return author_list
 
 
@@ -170,10 +176,10 @@ class QuoteScraper(Scraper):
     def __init__(self, base_url, db: Database):
         self.base_url = base_url
         self.db = db
-        self.json_handler = json_handler
+        self.json_handler = JsonFileHandler()
 
     async def get_pages(self, session) -> list:
-        logging.info(f"Отримання списку сторінок для парсингу з: {self.base_url}")
+        logging.info("Отримання списку сторінок для парсингу з: %s", self.base_url)
         links = [self.base_url]
         link_to_parse = self.base_url
         while link_to_parse:
@@ -185,7 +191,7 @@ class QuoteScraper(Scraper):
                 link_to_parse = self.base_url + link
             else:
                 link_to_parse = None
-        logging.info(f"Знайдено {len(links)} сторінок для парсингу.")
+        logging.info("Знайдено %d сторінок для парсингу.", len(links))
         return links
 
     async def parse_data(self, session, links: list):
@@ -208,7 +214,7 @@ class QuoteScraper(Scraper):
                         "quote": quote,
                     }
                 )
-        logging.info(f"Парсинг завершено. Знайдено {len(quotes_list)} цитат.")
+        logging.info("Парсинг завершено. Знайдено %d цитат.", len(quotes_list))
         return quotes_list
 
 
@@ -228,8 +234,7 @@ class ScraperManager(ScraperAbstract):
 
         async with aiohttp.ClientSession() as session:
             # Отримання інформації про авторів з послідуючим парсингом та записом у json файл
-            author_scraper = AuthorScraper(
-                self.scraper.base_url)
+            author_scraper = AuthorScraper(self.scraper.base_url)
             pages = await author_scraper.get_pages(session)
             author_links = await author_scraper.get_authors_info(session, pages)
             authors_info = await author_scraper.parse_data(session, author_links)
@@ -250,7 +255,7 @@ class ScraperManager(ScraperAbstract):
 
         end_time = time.time()
         elapsed_time = end_time - start_time
-        logging.info(f"Скрипт завершено успішно за {elapsed_time:.2f} секунд.")
+        logging.info("Скрипт завершено успішно за %.2f секунд.", elapsed_time)
 
 
 if __name__ == "__main__":
