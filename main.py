@@ -15,27 +15,27 @@ logging.basicConfig(
 
 
 def get_soup(url):
-    logging.info(f"Отримання вмісту сторінки: {url}")
+    logging.info("Отримання вмісту сторінки: %s", url)
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "lxml")
     return soup
 
 
 def write_to_json(filename: str, data: list):
-    logging.info(f"Запис даних у файл: {filename}")
+    logging.info("Запис даних у файл: %s", filename)
     with open(filename, "w", encoding="utf-8") as file:
         json.dump(data, file, ensure_ascii=False, indent=4)
 
 
 def read_from_json(filename: str):
-    logging.info(f"Читання даних з файлу: {filename}")
+    logging.info("Читання даних з файлу: %s", filename)
     with open(filename) as f:
         data = json.load(f)
     return data
 
 
 def get_pages(base_link: str) -> list:
-    logging.info(f"Отримання списку сторінок для парсингу з: {base_link}")
+    logging.info("Отримання списку сторінок для парсингу з: %s", base_link)
     links = [base_link]
     link_to_parse = base_link
     while link_to_parse:
@@ -47,7 +47,7 @@ def get_pages(base_link: str) -> list:
             link_to_parse = base_link + link
         else:
             link_to_parse = None
-    logging.info(f"Знайдено {len(links)} сторінок для парсингу.")
+    logging.info("Знайдено %d сторінок для парсингу.", len(links))
     return links
 
 
@@ -70,7 +70,7 @@ def get_authors_info(base_url: str, urls: list) -> list:
                 author_links.append(
                     {"author_name": author_name, "author_info_url": author_info_url}
                 )
-    logging.info(f"Знайдено {len(author_links)} авторів.")
+    logging.info("Знайдено %d авторів.", len(author_links))
     return author_links
 
 
@@ -92,7 +92,7 @@ def parse_authors(author_links: list):
                 "description": description,
             }
         )
-    logging.info(f"Парсинг завершено. Знайдено {len(author_list)} авторів.")
+    logging.info("Парсинг завершено. Знайдено %d авторів.", len(author_list))
     return author_list
 
 
@@ -116,7 +116,7 @@ def parse_quotes(links: list):
                     "quote": quote,
                 }
             )
-    logging.info(f"Парсинг завершено. Знайдено {len(quotes_list)} цитат.")
+    logging.info("Парсинг завершено. Знайдено %d цитат.", len(quotes_list))
     return quotes_list
 
 
@@ -173,4 +173,4 @@ if __name__ == "__main__":
 
     end_time = time.time()
     elapsed_time = end_time - start_time
-    logging.info(f"Скрипт завершено успішно за {elapsed_time:.2f} секунд.")
+    logging.info("Скрипт завершено успішно за %.2f секунд.", elapsed_time)
